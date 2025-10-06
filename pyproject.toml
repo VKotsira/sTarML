@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "starml"
+version = "0.1.0"
+description = "sTarML: A Sequence-Based Machine Learning Framework for Predicting Bacterial sRNA–mRNA Interactions"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" } 
+authors = [{ name = "VKotsira", email = "vasilikikotsira@hotmail.com" }]
+keywords = ["sRNA", "mRNA", "RNA-RNA interactions", "bioinformatics", "machine learning"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+
+dependencies = [
+  "numpy>=1.23",
+  "pandas>=1.5",
+  "scipy>=1.10",
+  "joblib>=1.3",
+  "scikit-learn>=1.2",
+  "biopython>=1.79",
+  "xgboost>=1.7"
+]
+
+[project.urls]
+Homepage = "https://github.com/VKotsira/sTarML"
+Issues = "https://github.com/VKotsira/sTarML/issues"
+
+[project.scripts]
+starml = "starml.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+"starml" = ["models/**"]
+
