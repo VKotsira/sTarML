@@ -222,8 +222,8 @@ def load_srna(srna_csv, srna_fasta, outdir, log):
     log.info("Saved %d sRNAs to %s", len(records), srna_file)
     return
 
-# Create TSS-targeting BED and FASTA via bedtools
-def create_tss_bed(genome_fna_path, cleaned_gtf_path, bed_path, fasta_out_path, log, print_steps=False, total_steps=7):
+# Create atg-targeting BED and FASTA via bedtools
+def create_atg_bed(genome_fna_path, cleaned_gtf_path, bed_path, fasta_out_path, log, print_steps=False, total_steps=7):
     """
     Build a BED with windows around the start codon region:
       + strand: [start-200, start+99]
@@ -234,7 +234,7 @@ def create_tss_bed(genome_fna_path, cleaned_gtf_path, bed_path, fasta_out_path, 
     NOTE: The BED 'name' field includes both gene_id and gene_name: gene_id|gene_name
           (falls back to gene_id if gene_name is absent).
     """
-    step(f"[sTarML] Step 4/{total_steps}: Creating TSS-window BED", log, print_steps)
+    step(f"[sTarML] Step 4/{total_steps}: Creating atg-window BED", log, print_steps)
 
     # Chromosome lengths
     chrom_lengths = []
@@ -339,11 +339,11 @@ def create_tss_bed(genome_fna_path, cleaned_gtf_path, bed_path, fasta_out_path, 
     # Write BED (6 columns; name=bed_name)
     bed_df = df[["seqnames", "bed_start", "bed_end", "bed_name", "score", "strand"]].copy()
     bed_df.to_csv(bed_path, sep="\t", header=False, index=False)
-    log.info("Wrote TSS-window BED → %s (rows=%d)", bed_path, len(bed_df))
+    log.info("Wrote atg-window BED → %s (rows=%d)", bed_path, len(bed_df))
 
     # Optional FASTA via bedtools
     if shutil.which("bedtools"):
-        step(f"[sTarML] Step 4/{total_steps}: Extracting TSS-window FASTA with bedtools", log, print_steps)
+        step(f"[sTarML] Step 4/{total_steps}: Extracting atg-window FASTA with bedtools", log, print_steps)
         cmd = [
             "bedtools", "getfasta", "-name+", "-s",
             "-fo", str(fasta_out_path),
@@ -351,9 +351,9 @@ def create_tss_bed(genome_fna_path, cleaned_gtf_path, bed_path, fasta_out_path, 
             "-bed", str(bed_path)
         ]
         run_cmd(cmd, log)
-        log.info("Wrote TSS-window FASTA → %s", fasta_out_path)
+        log.info("Wrote atg-window FASTA → %s", fasta_out_path)
     else:
-        log.info("bedtools not found; skipped FASTA extraction for TSS windows.")
+        log.info("bedtools not found; skipped FASTA extraction for atg windows.")
     return
 
 
@@ -426,8 +426,8 @@ def _load_required_artifacts(models_dir: Path, log):
 
     return srna_vec, mrna_vec, srna_scl, mrna_scl, model
 
-def run_predictions(srna_fa, tss_fa, outdir, cores, log, print_steps=False, total_steps=7, script_dir: Path=None):
-    """Generate all sRNA×TSS pairs, preprocess via external artifacts, run model, write predictions.tsv."""
+def run_predictions(srna_fa, atg_fa, outdir, cores, log, print_steps=False, total_steps=7, script_dir: Path=None):
+    """Generate all sRNA×atg pairs, preprocess via external artifacts, run model, write predictions.tsv."""
     if script_dir is None:
         log.error("Internal error: script_dir not provided for locating 'models/'.")
         sys.exit(1)
@@ -437,32 +437,32 @@ def run_predictions(srna_fa, tss_fa, outdir, cores, log, print_steps=False, tota
         log.error("Models directory not found: %s", models_dir)
         sys.exit(1)
 
-    step(f"[sTarML] Step 6/{total_steps}: Loading model & preprocessors; generating sRNA×TSS pairs", log, print_steps)
+    step(f"[sTarML] Step 6/{total_steps}: Loading model & preprocessors; generating sRNA×atg pairs", log, print_steps)
 
     srna_vec, mrna_vec, srna_scl, mrna_scl, model = _load_required_artifacts(models_dir, log)
     _set_n_jobs_if_possible(model, cores, log)
 
-    # Build cartesian product of sRNAs × TSS windows
+    # Build cartesian product of sRNAs × atg windows
     srna_dict = _read_fasta_as_dict(srna_fa)
-    tss_dict  = _read_fasta_as_dict(tss_fa)
+    atg_dict  = _read_fasta_as_dict(atg_fa)
 
     rows = []
     for sid, sseq in srna_dict.items():
-        for tid, tseq in tss_dict.items():
+        for tid, tseq in atg_dict.items():
             rows.append({
                 "srna_id": sid,
                 "target_name": tid,  # BED name -> gene_id|gene_name
                 "srna_sequence": sseq,
-                "rna_seq_TSS_expanded": tseq,
+                "rna_seq_atg_expanded": tseq,
             })
     
     if not rows:
-        log.error("No sRNA×TSS pairs generated; check FASTA inputs.")
+        log.error("No sRNA×atg pairs generated; check FASTA inputs.")
         sys.exit(1)
     df_pairs = pd.DataFrame(rows)
 
     srna = df_pairs["srna_sequence"]
-    mrna = df_pairs["rna_seq_TSS_expanded"]
+    mrna = df_pairs["rna_seq_atg_expanded"]
 
     srna_kmer = srna_vec.transform(srna).toarray()
     mrna_kmer = mrna_vec.transform(mrna).toarray()
@@ -534,10 +534,10 @@ def main():
     cleaned_gtf = outdir / "annotation_cleaned.gtf"
     filter_gtf(gtf, cleaned_gtf, log)
 
-    # Create TSS windows BED (+ optional FASTA)
-    tss_bed = outdir / "tss_windows.bed"
-    tss_fa  = outdir / "tss_windows.fasta"
-    create_tss_bed(fasta, cleaned_gtf, tss_bed, tss_fa, log, args.print_steps, total_steps=total_steps)
+    # Create atg windows BED (+ optional FASTA)
+    atg_bed = outdir / "atg_windows.bed"
+    atg_fa  = outdir / "atg_windows.fasta"
+    create_atg_bed(fasta, cleaned_gtf, atg_bed, atg_fa, log, args.print_steps, total_steps=total_steps)
 
     step(f"[sTarML] Step 5/{total_steps}: Saving sRNAs (DNA alphabet; U→T if present)", log, args.print_steps)
     srna_dir = ensure_dir(outdir / "srna")
@@ -548,7 +548,7 @@ def main():
     script_dir = Path(__file__).resolve().parent
     run_predictions(
         srna_fa=srna_fa,
-        tss_fa=tss_fa,
+        atg_fa=atg_fa,
         outdir=outdir,
         cores=args.cores,
         log=log,
