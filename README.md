@@ -1,6 +1,6 @@
 # sTarML: A Sequence-Based Machine Learning Framework for Predicting Bacterial sRNA-mRNA Interactions
 
-sTarML prepares RefSeq genome + GTF for a given NCBI Taxonomy ID, builds TSS-window regions near start codons, and predicts sRNA targets using bundled k-mer vectorizers/scalers and a trained model.
+sTarML prepares RefSeq genome + GTF for a given NCBI Taxonomy ID, builds start-codon–centered windows (covering 200 nt upstream and 100 nt downstream of the ATG), and predicts sRNA targets using bundled k-mer vectorizers/scalers and a trained model.
 
 
 ---
@@ -43,7 +43,7 @@ starml --taxid 511145 --refseq GCF_025643435.1 --srna "ACGTT" --outdir results
 1. Initialize & logging → `logs/run.log`  
 2. Download genome + GTF (RefSeq) via `ncbi-datasets-cli`  
 3. Filter GTF to protein-coding mRNAs  
-4. Create TSS-window BED and (if `bedtools`) extract FASTA  
+4. Create start-codon–window BED (200 nt upstream, 100 nt downstream of ATG) and (if bedtools) extract FASTA  
 5. Normalize sRNAs (A/C/G/T/N; `U→T`) and save FASTA  
 6. Vectorize/scale, run bundled model → `predictions.tsv`  
 7. Finish
@@ -52,7 +52,7 @@ starml --taxid 511145 --refseq GCF_025643435.1 --srna "ACGTT" --outdir results
 
 ## Outputs (in `--outdir`)
 
-- `tss_windows.bed` (and `tss_windows.fasta` if `bedtools` present)  
+- `startcodon_windows.bed (and startcodon_windows.fasta if bedtools present)`
 - `srna/srnas.fasta`  
 - `predictions.tsv`  
 - `logs/run.log`
